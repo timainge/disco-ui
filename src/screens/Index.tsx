@@ -16,26 +16,97 @@ import {
 
 const columnHelper = createColumnHelper<any>();
 
-function FilterInput({ column }: { column: Column<any, unknown> }) {
-  const columnFilterValue = column.getFilterValue();
+function AdvancedFilters({ table, categories, docTypes }: { table: any, categories: any[], docTypes: string[] }) {
+  const dateColumn = table.getColumn('document_date');
+  const docTypeColumn = table.getColumn('doc_type');
+  const statusColumn = table.getColumn('classification');
+  const categoryColumn = table.getColumn('classification_category_id');
 
+  const dateFilter = (dateColumn?.getFilterValue() as { start?: string, end?: string }) || {};
+  
   return (
-    <div className="mt-2 relative">
-      <input
-        type="text"
-        value={(columnFilterValue ?? '') as string}
-        onChange={e => column.setFilterValue(e.target.value)}
-        placeholder={`Filter...`}
-        className="w-full text-xs p-1.5 border border-border rounded bg-background focus:ring-1 focus:ring-primary outline-none"
-      />
-      {columnFilterValue && (
+    <div className="bg-muted/30 border border-border rounded-lg p-6 mb-6 shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold flex items-center">
+          <Filter className="w-4 h-4 mr-2 text-primary" />
+          Advanced Filters
+        </h3>
         <button 
-          onClick={() => column.setFilterValue('')}
-          className="absolute right-1.5 top-2 text-muted-foreground hover:text-foreground"
+          onClick={() => {
+            dateColumn?.setFilterValue(undefined);
+            docTypeColumn?.setFilterValue(undefined);
+            statusColumn?.setFilterValue(undefined);
+            categoryColumn?.setFilterValue(undefined);
+          }}
+          className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center bg-background border border-border px-2 py-1 rounded-md shadow-sm"
         >
-          <X className="w-3 h-3" />
+          <X className="w-3 h-3 mr-1" />
+          Clear All
         </button>
-      )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1.5">Date Range</label>
+          <div className="flex items-center space-x-2">
+            <input 
+              type="date" 
+              value={dateFilter.start || ''}
+              onChange={e => dateColumn?.setFilterValue({ ...dateFilter, start: e.target.value || undefined })}
+              className="w-full text-sm px-3 py-2 border border-border rounded-md bg-background focus:ring-2 focus:ring-primary/50 outline-none transition-shadow text-foreground"
+            />
+            <span className="text-muted-foreground text-xs font-medium">to</span>
+            <input 
+              type="date" 
+              value={dateFilter.end || ''}
+              onChange={e => dateColumn?.setFilterValue({ ...dateFilter, end: e.target.value || undefined })}
+              className="w-full text-sm px-3 py-2 border border-border rounded-md bg-background focus:ring-2 focus:ring-primary/50 outline-none transition-shadow text-foreground"
+            />
+          </div>
+        </div>
+        
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1.5">Document Type</label>
+          <select 
+            value={(docTypeColumn?.getFilterValue() as string) || ''}
+            onChange={e => docTypeColumn?.setFilterValue(e.target.value || undefined)}
+            className="w-full text-sm px-3 py-2 border border-border rounded-md bg-background focus:ring-2 focus:ring-primary/50 outline-none transition-shadow capitalize text-foreground"
+          >
+            <option value="">All Types</option>
+            {docTypes.map(type => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1.5">Review Status</label>
+          <select 
+            value={(statusColumn?.getFilterValue() as string) || ''}
+            onChange={e => statusColumn?.setFilterValue(e.target.value || undefined)}
+            className="w-full text-sm px-3 py-2 border border-border rounded-md bg-background focus:ring-2 focus:ring-primary/50 outline-none transition-shadow text-foreground"
+          >
+            <option value="">All Statuses</option>
+            <option value="relevant">Relevant</option>
+            <option value="privileged">Privileged</option>
+            <option value="unreviewed">Unreviewed</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1.5">Category</label>
+          <select 
+            value={(categoryColumn?.getFilterValue() as string) || ''}
+            onChange={e => categoryColumn?.setFilterValue(e.target.value || undefined)}
+            className="w-full text-sm px-3 py-2 border border-border rounded-md bg-background focus:ring-2 focus:ring-primary/50 outline-none transition-shadow text-foreground"
+          >
+            <option value="">All Categories</option>
+            {categories?.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
     </div>
   );
 }
@@ -50,6 +121,11 @@ export function Index() {
   const [globalFilter, setGlobalFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
+  const docTypes = useMemo(() => {
+    const types = new Set(documents.map(d => d.doc_type).filter(Boolean));
+    return Array.from(types).sort();
+  }, [documents]);
+
   const columns = useMemo(() => [
     columnHelper.accessor('classification.page_code', {
       header: ({ column }) => (
@@ -57,7 +133,6 @@ export function Index() {
           <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
             <span>Page Code</span><ArrowUpDown className="w-3 h-3" />
           </button>
-          {showFilters && <FilterInput column={column} />}
         </div>
       ),
       cell: info => <span className="font-mono text-xs">{info.getValue() || 'Uncoded'}</span>,
@@ -68,10 +143,17 @@ export function Index() {
           <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
             <span>Doc Date</span><ArrowUpDown className="w-3 h-3" />
           </button>
-          {showFilters && <FilterInput column={column} />}
         </div>
       ),
       cell: info => info.getValue() || '-',
+      filterFn: (row, id, value) => {
+        const rowDate = row.getValue(id) as string;
+        if (!rowDate) return false;
+        const { start, end } = value as { start?: string, end?: string };
+        if (start && rowDate < start) return false;
+        if (end && rowDate > end) return false;
+        return true;
+      }
     }),
     columnHelper.accessor('doc_type', {
       header: ({ column }) => (
@@ -79,10 +161,13 @@ export function Index() {
           <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
             <span>Doc Type</span><ArrowUpDown className="w-3 h-3" />
           </button>
-          {showFilters && <FilterInput column={column} />}
         </div>
       ),
       cell: info => <span className="capitalize">{info.getValue() || '-'}</span>,
+      filterFn: (row, id, value) => {
+        if (!value) return true;
+        return row.getValue(id) === value;
+      }
     }),
     columnHelper.accessor('author', {
       header: ({ column }) => (
@@ -90,7 +175,6 @@ export function Index() {
           <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
             <span>Author</span><ArrowUpDown className="w-3 h-3" />
           </button>
-          {showFilters && <FilterInput column={column} />}
         </div>
       ),
       cell: info => info.getValue() || '-',
@@ -101,7 +185,6 @@ export function Index() {
           <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
             <span>Title/Subject</span><ArrowUpDown className="w-3 h-3" />
           </button>
-          {showFilters && <FilterInput column={column} />}
         </div>
       ),
       cell: info => <span className="font-medium">{info.getValue()}</span>,
@@ -112,7 +195,6 @@ export function Index() {
           <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
             <span>Category</span><ArrowUpDown className="w-3 h-3" />
           </button>
-          {showFilters && <FilterInput column={column} />}
         </div>
       ),
       cell: info => {
@@ -121,10 +203,8 @@ export function Index() {
         return cat ? cat.name : '-';
       },
       filterFn: (row, id, value) => {
-        const catId = row.getValue(id);
-        const cat = categories?.find(c => c.id === catId);
-        const catName = cat ? cat.name.toLowerCase() : '';
-        return catName.includes((value as string).toLowerCase());
+        if (!value) return true;
+        return row.getValue(id) === value;
       }
     }),
     columnHelper.accessor('classification', {
@@ -133,7 +213,6 @@ export function Index() {
           <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
             <span>Review</span><ArrowUpDown className="w-3 h-3" />
           </button>
-          {showFilters && <FilterInput column={column} />}
         </div>
       ),
       cell: info => {
@@ -143,14 +222,15 @@ export function Index() {
         return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">Unreviewed</span>;
       },
       filterFn: (row, id, value) => {
+        if (!value) return true;
         const c = row.getValue(id) as any;
         let status = 'unreviewed';
         if (c?.is_relevant) status = 'relevant';
         if (c?.is_privileged) status = 'privileged';
-        return status.includes((value as string).toLowerCase());
+        return status === value;
       }
     }),
-  ], [categories, showFilters]);
+  ], [categories]);
 
   const table = useReactTable({
     data: documents,
@@ -205,6 +285,11 @@ export function Index() {
           </button>
         </div>
       </div>
+      
+      {showFilters && (
+        <AdvancedFilters table={table} categories={categories || []} docTypes={docTypes} />
+      )}
+
       <div className="flex-1 border border-border rounded-lg overflow-hidden bg-card flex flex-col shadow-sm">
         <div className="overflow-x-auto flex-1">
           <table className="w-full text-sm text-left">

@@ -55,17 +55,21 @@ export function Review() {
   }, [handleKeyDown]);
 
   return (
-    <div className="flex h-full overflow-hidden">
-      <PanelGroup direction="horizontal">
-        <Panel defaultSize={20} minSize={15} maxSize={40}>
+    <div className="h-full w-full overflow-hidden">
+      <PanelGroup id="review-layout" direction="horizontal" className="h-full w-full">
+        <Panel defaultSize="20%" minSize="15%" maxSize="40%">
           {isListView ? <DocumentList /> : <BundleTree />}
         </Panel>
-        <PanelResizeHandle className="w-1 bg-border hover:bg-primary/50 transition-colors cursor-col-resize" />
-        <Panel defaultSize={60} minSize={30}>
+        <PanelResizeHandle className="w-1.5 flex items-center justify-center bg-transparent hover:bg-primary/20 transition-colors">
+          <div className="w-1 h-8 bg-border rounded-full" />
+        </PanelResizeHandle>
+        <Panel defaultSize="60%" minSize="30%">
           <DocumentPreview />
         </Panel>
-        <PanelResizeHandle className="w-1 bg-border hover:bg-primary/50 transition-colors cursor-col-resize" />
-        <Panel defaultSize={20} minSize={15} maxSize={40}>
+        <PanelResizeHandle className="w-1.5 flex items-center justify-center bg-transparent hover:bg-primary/20 transition-colors">
+          <div className="w-1 h-8 bg-border rounded-full" />
+        </PanelResizeHandle>
+        <Panel defaultSize="20%" minSize="15%" maxSize="40%">
           <MetadataPanel />
         </Panel>
       </PanelGroup>

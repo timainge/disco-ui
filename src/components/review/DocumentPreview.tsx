@@ -38,7 +38,7 @@ export function DocumentPreview() {
   const pdfUrl = isPdf ? 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf' : null;
 
   return (
-    <div className="flex-1 flex flex-col bg-muted/20 relative h-full overflow-hidden">
+    <div className="h-full w-full flex flex-col bg-muted/20 relative overflow-hidden">
       {docDetail ? (
         <div className="flex-1 flex flex-col h-full">
           {/* Toolbar */}

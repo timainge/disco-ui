@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Cases } from './screens/Cases';
 import { Dashboard } from './screens/Dashboard';
 import { Review } from './screens/Review';
 import { Index } from './screens/Index';
@@ -34,6 +35,7 @@ export default function App() {
           toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
         />
         <main className="flex-1 overflow-hidden">
+          {activeTab === 'cases' && <Cases />}
           {activeTab === 'dashboard' && <Dashboard />}
           {activeTab === 'review' && <Review />}
           {activeTab === 'index' && <Index />}

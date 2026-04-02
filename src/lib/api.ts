@@ -105,6 +105,10 @@ export const api = {
     console.log(`Added tag to ${id}: ${tag}`);
     return tag;
   },
+  removeTag: async (id: string, tag: string) => {
+    console.log(`Removed tag from ${id}: ${tag}`);
+    return tag;
+  },
   searchDocuments: async (query: string) => {
     console.log(`Searching for: ${query}`);
     if (!query) return { items: mockDocuments, total: mockDocuments.length };

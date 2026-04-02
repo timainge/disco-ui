@@ -10,6 +10,6 @@ interface AppState {
 export const useStore = create<AppState>((set) => ({
   selectedDocId: null,
   setSelectedDocId: (id) => set({ selectedDocId: id }),
-  activeTab: 'dashboard',
+  activeTab: 'cases',
   setActiveTab: (tab) => set({ activeTab: tab }),
 }));

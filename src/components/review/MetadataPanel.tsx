@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Lock, X, Plus, FolderInput } from 'lucide-react';
 import { useDocumentDetail, useCategories, useSubmitReview, useAddNote, useAddTag, useRemoveTag, useMoveCategory } from '@/hooks/queries';
 import { useStore } from '@/store/useStore';
@@ -48,7 +48,7 @@ export function MetadataPanel() {
 
   if (!docDetail) {
     return (
-      <div className="h-full border-l border-border bg-card flex flex-col overflow-y-auto shrink-0">
+      <div className="h-full w-full border-l border-border bg-card flex flex-col overflow-y-auto">
         <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm p-6 text-center">
           Select a document to view metadata and coding options
         </div>
@@ -57,7 +57,7 @@ export function MetadataPanel() {
   }
 
   return (
-    <div className="h-full border-l border-border bg-card flex flex-col overflow-y-auto shrink-0">
+    <div className="h-full w-full border-l border-border bg-card flex flex-col overflow-y-auto">
       <div className="p-5 space-y-8">
         <section>
           <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3 flex items-center">

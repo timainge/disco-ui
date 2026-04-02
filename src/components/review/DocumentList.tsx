@@ -99,7 +99,7 @@ export function DocumentList() {
   }, [selectedDocId, table, setSelectedDocId]);
 
   return (
-    <div className="h-full border-r border-border bg-card flex flex-col shrink-0 overflow-hidden">
+    <div className="h-full w-full border-r border-border bg-card flex flex-col overflow-hidden">
       <div className="p-3 border-b border-border bg-muted/30">
         <div className="relative mb-2">
           <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
