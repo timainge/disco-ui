@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, X, Plus, FolderInput } from 'lucide-react';
+import { Lock, X, Plus, FolderInput, AlertTriangle } from 'lucide-react';
 import { useDocumentDetail, useCategories, useSubmitReview, useAddNote, useAddTag, useRemoveTag, useMoveCategory } from '@/hooks/queries';
 import { useStore } from '@/store/useStore';
 
@@ -40,7 +40,7 @@ export function MetadataPanel() {
     removeTag.mutate({ id: selectedDocId, tag });
   };
 
-  const handleMoveCategory = (categoryId: string) => {
+  const handleMoveCategory = (categoryId: string | null) => {
     if (!selectedDocId) return;
     moveCategory.mutate({ id: selectedDocId, categoryId });
     setIsMovingCategory(false);
@@ -56,6 +56,8 @@ export function MetadataPanel() {
     );
   }
 
+  const isReviewed = docDetail.review !== null;
+
   return (
     <div className="h-full w-full border-l border-border bg-card flex flex-col overflow-y-auto">
       <div className="p-5 space-y-8">
@@ -65,15 +67,50 @@ export function MetadataPanel() {
             Document
             <span className="flex-1 h-[1px] bg-border ml-2"></span>
           </h3>
-          <div className="text-sm font-mono font-medium mb-4 bg-muted/50 p-2 rounded border border-border inline-block">
-            {docDetail.classification?.page_code || 'Uncoded'}
+
+          <div className="flex items-center gap-2 mb-4">
+            <div className="text-sm font-mono font-medium bg-muted/50 p-2 rounded border border-border inline-block">
+              {docDetail.classification?.page_code || 'Uncoded'}
+            </div>
+            {docDetail.classification?.is_stale && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/20">
+                <AlertTriangle className="w-3 h-3" />
+                Stale
+              </span>
+            )}
           </div>
+
           <div className="grid grid-cols-[70px_1fr] gap-y-2 text-sm">
-            <div className="text-muted-foreground">Date</div><div>{docDetail.document_date}</div>
-            <div className="text-muted-foreground">From</div><div className="truncate" title={docDetail.author || ''}>{docDetail.author}</div>
-            <div className="text-muted-foreground">To</div><div className="truncate" title={docDetail.metadata?.to || ''}>{docDetail.metadata?.to}</div>
-            <div className="text-muted-foreground">Type</div><div className="capitalize">{docDetail.doc_type}</div>
-            <div className="text-muted-foreground">Source</div><div className="capitalize">{docDetail.source}</div>
+            <div className="text-muted-foreground">Date</div>
+            <div>{docDetail.document_date || '—'}</div>
+
+            <div className="text-muted-foreground">From</div>
+            <div className="truncate" title={docDetail.author || ''}>{docDetail.author || '—'}</div>
+
+            {docDetail.addressee && (
+              <>
+                <div className="text-muted-foreground">To</div>
+                <div className="truncate" title={docDetail.addressee}>{docDetail.addressee}</div>
+              </>
+            )}
+            {docDetail.addressee_org && (
+              <>
+                <div className="text-muted-foreground">To (org)</div>
+                <div className="truncate" title={docDetail.addressee_org}>{docDetail.addressee_org}</div>
+              </>
+            )}
+            {!docDetail.addressee && docDetail.metadata?.to && (
+              <>
+                <div className="text-muted-foreground">To</div>
+                <div className="truncate" title={docDetail.metadata.to}>{docDetail.metadata.to}</div>
+              </>
+            )}
+
+            <div className="text-muted-foreground">Type</div>
+            <div className="capitalize">{docDetail.doc_type || '—'}</div>
+
+            <div className="text-muted-foreground">Source</div>
+            <div className="capitalize">{docDetail.source}</div>
           </div>
         </section>
 
@@ -90,8 +127,8 @@ export function MetadataPanel() {
                 <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{docDetail.classification?.relevance_score}</span>
               </div>
               <div className="h-1.5 bg-accent rounded-full overflow-hidden">
-                <div 
-                  className={`h-full ${docDetail.classification?.relevance_score && docDetail.classification.relevance_score >= 0.5 ? 'bg-success' : 'bg-muted-foreground'}`} 
+                <div
+                  className={`h-full ${docDetail.classification?.relevance_score && docDetail.classification.relevance_score >= 0.5 ? 'bg-success' : 'bg-muted-foreground'}`}
                   style={{ width: `${(docDetail.classification?.relevance_score || 0) * 100}%` }}
                 />
               </div>
@@ -99,27 +136,39 @@ export function MetadataPanel() {
                 "{docDetail.classification?.relevance_explanation}"
               </p>
             </div>
-            
+
             {docDetail.classification?.is_privileged && (
               <div className="bg-warning/10 border border-warning/30 rounded-md p-3 text-sm">
                 <div className="font-bold text-warning flex items-center mb-1">
                   <Lock className="w-4 h-4 mr-1.5" /> Privileged
                 </div>
-                <div className="text-warning/90 font-medium mb-1 capitalize">{docDetail.classification.privilege_type?.replace('_', ' ')}</div>
-                <div className="text-warning/80 text-xs leading-relaxed">{docDetail.classification.privilege_reason}</div>
+                {docDetail.classification.privilege_type && (
+                  <div className="text-warning/90 font-medium mb-1 capitalize">
+                    {docDetail.classification.privilege_type.replace(/_/g, ' ')}
+                  </div>
+                )}
+                {docDetail.classification.privilege_reason && (
+                  <div className="text-warning/80 text-xs leading-relaxed">{docDetail.classification.privilege_reason}</div>
+                )}
               </div>
             )}
 
             <div className="text-sm flex flex-col border-t border-border pt-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-muted-foreground">Category</span> 
+                <span className="text-muted-foreground">Category</span>
                 <span className="font-medium">{categories?.find(c => c.id === docDetail.classification?.category_id)?.name || 'None'}</span>
               </div>
-              
+
               {isMovingCategory ? (
                 <div className="mt-2 space-y-2">
                   <div className="text-xs font-medium text-muted-foreground mb-1">Select new category:</div>
                   <div className="max-h-40 overflow-y-auto border border-border rounded-md bg-background">
+                    <button
+                      onClick={() => handleMoveCategory(null)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors text-muted-foreground italic"
+                    >
+                      — Staging (unclassified)
+                    </button>
                     {categories?.map(category => (
                       <button
                         key={category.id}
@@ -130,7 +179,7 @@ export function MetadataPanel() {
                       </button>
                     ))}
                   </div>
-                  <button 
+                  <button
                     onClick={() => setIsMovingCategory(false)}
                     className="w-full text-xs text-muted-foreground hover:text-foreground py-1"
                   >
@@ -138,7 +187,7 @@ export function MetadataPanel() {
                   </button>
                 </div>
               ) : (
-                <button 
+                <button
                   onClick={() => setIsMovingCategory(true)}
                   className="flex items-center justify-center w-full py-1.5 mt-1 text-xs font-medium text-primary bg-primary/5 hover:bg-primary/10 rounded border border-primary/20 transition-colors"
                 >
@@ -156,24 +205,36 @@ export function MetadataPanel() {
             Review
             <span className="flex-1 h-[1px] bg-border ml-2"></span>
           </h3>
-          
+
+          {isReviewed && (
+            <div className="mb-3 text-xs text-muted-foreground bg-muted/30 px-3 py-1.5 rounded border border-border/50">
+              Reviewed by <span className="font-medium">{docDetail.review!.reviewer}</span>
+            </div>
+          )}
+
           <div className="space-y-2">
-            <label className={`flex items-center space-x-3 text-sm p-3 rounded-md border cursor-pointer transition-colors ${docDetail.review?.decision === 'relevant' ? 'border-success bg-success/5 text-success font-medium' : 'border-border hover:bg-accent'}`}>
-              <input type="radio" name="decision" value="relevant" checked={docDetail.review?.decision === 'relevant'} onChange={() => handleDecisionChange('relevant')} className="text-success focus:ring-success w-4 h-4" />
-              <span>Relevant</span>
-            </label>
-            <label className={`flex items-center space-x-3 text-sm p-3 rounded-md border cursor-pointer transition-colors ${docDetail.review?.decision === 'not_relevant' ? 'border-muted-foreground bg-muted text-foreground font-medium' : 'border-border hover:bg-accent'}`}>
-              <input type="radio" name="decision" value="not_relevant" checked={docDetail.review?.decision === 'not_relevant'} onChange={() => handleDecisionChange('not_relevant')} className="text-muted-foreground focus:ring-muted-foreground w-4 h-4" />
-              <span>Not Relevant</span>
-            </label>
-            <label className={`flex items-center space-x-3 text-sm p-3 rounded-md border cursor-pointer transition-colors ${docDetail.review?.decision === 'privileged' ? 'border-warning bg-warning/10 text-warning font-medium' : 'border-warning/30 hover:bg-warning/5 text-warning'}`}>
-              <input type="radio" name="decision" value="privileged" checked={docDetail.review?.decision === 'privileged'} onChange={() => handleDecisionChange('privileged')} className="text-warning focus:ring-warning w-4 h-4" />
-              <span className="font-medium">Privileged</span>
-            </label>
-            <label className={`flex items-center space-x-3 text-sm p-3 rounded-md border cursor-pointer transition-colors ${docDetail.review?.decision === 'needs_review' ? 'border-primary bg-primary/5 text-primary font-medium' : 'border-border hover:bg-accent'}`}>
-              <input type="radio" name="decision" value="needs_review" checked={docDetail.review?.decision === 'needs_review'} onChange={() => handleDecisionChange('needs_review')} className="text-primary focus:ring-primary w-4 h-4" />
-              <span>Needs Review</span>
-            </label>
+            {(['relevant', 'not_relevant', 'privileged', 'needs_review'] as const).map(decision => {
+              const labels: Record<string, string> = { relevant: 'Relevant', not_relevant: 'Not Relevant', privileged: 'Privileged', needs_review: 'Needs Review' };
+              const activeClasses: Record<string, string> = {
+                relevant: 'border-success bg-success/5 text-success font-medium',
+                not_relevant: 'border-muted-foreground bg-muted text-foreground font-medium',
+                privileged: 'border-warning bg-warning/10 text-warning font-medium',
+                needs_review: 'border-primary bg-primary/5 text-primary font-medium',
+              };
+              const inactiveClasses: Record<string, string> = {
+                relevant: 'border-border hover:bg-accent',
+                not_relevant: 'border-border hover:bg-accent',
+                privileged: 'border-warning/30 hover:bg-warning/5 text-warning',
+                needs_review: 'border-border hover:bg-accent',
+              };
+              const isActive = docDetail.review?.decision === decision;
+              return (
+                <label key={decision} className={`flex items-center space-x-3 text-sm p-3 rounded-md border cursor-pointer transition-colors ${isActive ? activeClasses[decision] : inactiveClasses[decision]}`}>
+                  <input type="radio" name="decision" value={decision} checked={isActive} onChange={() => handleDecisionChange(decision)} className="w-4 h-4" />
+                  <span>{labels[decision]}</span>
+                </label>
+              );
+            })}
           </div>
 
           <div className="mt-6 space-y-4">
@@ -189,12 +250,12 @@ export function MetadataPanel() {
                   </span>
                 ))}
               </div>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={tagText}
                 onChange={e => setTagText(e.target.value)}
                 onKeyDown={handleAddTag}
-                placeholder="Add a tag and press Enter..." 
+                placeholder="Add a tag and press Enter..."
                 className="w-full text-sm p-2 rounded-md border border-border bg-background focus:ring-1 focus:ring-primary focus:border-primary outline-none"
               />
             </div>
@@ -212,13 +273,13 @@ export function MetadataPanel() {
                 ))}
               </div>
               <div className="relative">
-                <textarea 
+                <textarea
                   value={noteText}
                   onChange={e => setNoteText(e.target.value)}
-                  className="w-full text-sm p-2.5 pr-10 rounded-md border border-border bg-background resize-none h-20 focus:ring-1 focus:ring-primary focus:border-primary outline-none" 
+                  className="w-full text-sm p-2.5 pr-10 rounded-md border border-border bg-background resize-none h-20 focus:ring-1 focus:ring-primary focus:border-primary outline-none"
                   placeholder="Add a note..."
                 ></textarea>
-                <button 
+                <button
                   onClick={handleAddNote}
                   disabled={!noteText.trim()}
                   className="absolute bottom-2 right-2 p-1.5 bg-primary text-primary-foreground rounded-md disabled:opacity-50"
