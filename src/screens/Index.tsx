@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { Download, Filter, ArrowUpDown, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useDocuments, useSearchDocuments, useCategories, useSearchFacets } from '@/hooks/queries';
 import { Document, DocumentFilters } from '@/lib/api';
-import { AdvancedFilters } from '@/components/index/AdvancedFilters';
+import { useDebounce } from '@/hooks/useDebounce';
+import { AdvancedFilters, AdvancedFilterState, AdvancedFilterSetters } from '@/components/index/AdvancedFilters';
 import {
   createColumnHelper,
   flexRender,
@@ -14,14 +15,6 @@ import {
 
 const columnHelper = createColumnHelper<Document>();
 
-function useDebounce<T>(value: T, delay: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-  return debounced;
-}
 
 const PAGE_SIZE_OPTIONS = [10, 15, 20, 30, 40, 50];
 const DEFAULT_PAGE_SIZE = 15;
@@ -57,7 +50,7 @@ export function Index() {
     ...(filterReview === 'unreviewed' && { has_review: false }),
   };
 
-  const { data: docsData } = useDocuments(debouncedQuery ? undefined as any : docFilters);
+  const { data: docsData } = useDocuments(docFilters, { enabled: !debouncedQuery });
   const { data: searchResults } = useSearchDocuments(debouncedQuery);
 
   const documents: Document[] = debouncedQuery
@@ -160,9 +153,8 @@ export function Index() {
   // Reset to page 0 when filters/search change
   useEffect(() => { setPageIndex(0); }, [debouncedQuery, filterDocType, filterCategoryId, filterFromDate, filterToDate, filterReview]);
 
-  // Adapter for AdvancedFilters (it expects a table object with setColumnFilters)
-  const filterState = { filterDocType, filterCategoryId, filterFromDate, filterToDate, filterReview };
-  const setFilterState = { setFilterDocType, setFilterCategoryId, setFilterFromDate, setFilterToDate, setFilterReview };
+  const filterState: AdvancedFilterState = { filterDocType, filterCategoryId, filterFromDate, filterToDate, filterReview };
+  const setFilterState: AdvancedFilterSetters = { setFilterDocType, setFilterCategoryId, setFilterFromDate, setFilterToDate, setFilterReview };
 
   return (
     <div className="p-8 h-full flex flex-col max-w-7xl mx-auto">
@@ -197,7 +189,7 @@ export function Index() {
       </div>
 
       {showFilters && (
-        <ServerAdvancedFilters
+        <AdvancedFilters
           categories={categories || []}
           docTypes={docTypes}
           filterState={filterState}
@@ -271,49 +263,3 @@ export function Index() {
   );
 }
 
-// Inline filter panel that works with server-side filter state
-function ServerAdvancedFilters({ categories, docTypes, filterState, setFilterState }: {
-  categories: any[];
-  docTypes: string[];
-  filterState: { filterDocType: string; filterCategoryId: string; filterFromDate: string; filterToDate: string; filterReview: string };
-  setFilterState: { setFilterDocType: (v: string) => void; setFilterCategoryId: (v: string) => void; setFilterFromDate: (v: string) => void; setFilterToDate: (v: string) => void; setFilterReview: (v: string) => void };
-}) {
-  const { filterDocType, filterCategoryId, filterFromDate, filterToDate, filterReview } = filterState;
-  const { setFilterDocType, setFilterCategoryId, setFilterFromDate, setFilterToDate, setFilterReview } = setFilterState;
-
-  return (
-    <div className="mb-4 p-4 bg-card border border-border rounded-lg grid grid-cols-2 md:grid-cols-5 gap-3 text-sm shadow-sm">
-      <div>
-        <label className="block text-xs font-medium text-muted-foreground mb-1">Doc Type</label>
-        <select value={filterDocType} onChange={e => setFilterDocType(e.target.value)} className="w-full bg-background border border-border rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary">
-          <option value="">All types</option>
-          {docTypes.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-      </div>
-      <div>
-        <label className="block text-xs font-medium text-muted-foreground mb-1">Category</label>
-        <select value={filterCategoryId} onChange={e => setFilterCategoryId(e.target.value)} className="w-full bg-background border border-border rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary">
-          <option value="">All categories</option>
-          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-      </div>
-      <div>
-        <label className="block text-xs font-medium text-muted-foreground mb-1">From Date</label>
-        <input type="date" value={filterFromDate} onChange={e => setFilterFromDate(e.target.value)} className="w-full bg-background border border-border rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary" />
-      </div>
-      <div>
-        <label className="block text-xs font-medium text-muted-foreground mb-1">To Date</label>
-        <input type="date" value={filterToDate} onChange={e => setFilterToDate(e.target.value)} className="w-full bg-background border border-border rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary" />
-      </div>
-      <div>
-        <label className="block text-xs font-medium text-muted-foreground mb-1">Review Status</label>
-        <select value={filterReview} onChange={e => setFilterReview(e.target.value)} className="w-full bg-background border border-border rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary">
-          <option value="">All</option>
-          <option value="relevant">Relevant</option>
-          <option value="privileged">Privileged</option>
-          <option value="unreviewed">Unreviewed</option>
-        </select>
-      </div>
-    </div>
-  );
-}

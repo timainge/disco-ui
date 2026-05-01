@@ -19,7 +19,6 @@ export function NewCaseWizard({ onCancel, onComplete }: NewCaseWizardProps) {
   const [contentTypes, setContentTypes] = useState({ email: true, calendar: true, files: true });
 
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
-  const [queries, setQueries] = useState('');
 
   const [jobId, setJobId] = useState<string | null>(null);
   const [ingestError, setIngestError] = useState<string | null>(null);
@@ -202,16 +201,6 @@ export function NewCaseWizard({ onCancel, onComplete }: NewCaseWizardProps) {
                     className="w-full px-3 py-2 bg-background border border-border rounded-md focus:ring-2 focus:ring-primary/50 outline-none"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1.5">Queries & Keywords (Optional)</label>
-                <p className="text-xs text-muted-foreground mb-2">Pre-filter documents before LLM analysis to save processing time.</p>
-                <textarea
-                  value={queries}
-                  onChange={e => setQueries(e.target.value)}
-                  placeholder="e.g., from:johndoe@example.com OR subject:'merger'"
-                  className="w-full px-3 py-2 bg-background border border-border rounded-md focus:ring-2 focus:ring-primary/50 outline-none min-h-[100px] resize-y font-mono text-sm"
-                />
               </div>
             </div>
           )}

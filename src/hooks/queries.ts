@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, DocumentFilters, TimelineFilters } from '@/lib/api';
+import { api, Document, DocumentFilters, TimelineFilters } from '@/lib/api';
+import { useDebounce } from './useDebounce';
 
 export const useStats = () => useQuery({ queryKey: ['stats'], queryFn: api.getStats });
 
@@ -10,9 +11,10 @@ export const useCategories = (boxId?: string) => useQuery({
   queryFn: () => api.getCategories(boxId),
 });
 
-export const useDocuments = (filters: DocumentFilters = {}) => useQuery({
+export const useDocuments = (filters: DocumentFilters = {}, options: { enabled?: boolean } = {}) => useQuery({
   queryKey: ['documents', filters],
   queryFn: () => api.getDocuments(filters),
+  enabled: options.enabled ?? true,
 });
 
 export const useDocumentDetail = (id: string | null) => useQuery({
@@ -132,7 +134,10 @@ export const useIngestJob = (jobId: string | null) => useQuery({
   queryKey: ['ingest-job', jobId],
   queryFn: () => api.getIngestJob(jobId!),
   enabled: !!jobId,
-  refetchInterval: (query) => query.state.data?.status === 'running' ? 1000 : false,
+  refetchInterval: (query) => {
+    const status = query.state.data?.status;
+    return !status || status === 'running' ? 1000 : false;
+  },
 });
 
 export const useVelocity = (days = 30) => useQuery({
@@ -151,10 +156,22 @@ export const useBundleJob = (jobId: string | null) => useQuery({
   queryKey: ['bundle-job', jobId],
   queryFn: () => api.getBundleJob(jobId!),
   enabled: !!jobId,
-  refetchInterval: (query) => query.state.data?.status === 'running' ? 2000 : false,
+  refetchInterval: (query) => {
+    const status = query.state.data?.status;
+    return !status || status === 'running' ? 2000 : false;
+  },
 });
 
 export const useSearchFacets = (q?: string) => useQuery({
   queryKey: ['facets', q],
   queryFn: () => api.getSearchFacets(q),
 });
+
+export function useDocumentSearch(query: string, debounceMs = 300): Document[] {
+  const debouncedQuery = useDebounce(query.trim(), debounceMs);
+  const { data: docsData } = useDocuments({}, { enabled: !debouncedQuery });
+  const { data: searchResults } = useSearchDocuments(debouncedQuery);
+  return debouncedQuery
+    ? (searchResults?.map(r => r.document) ?? [])
+    : (docsData?.items ?? []);
+}

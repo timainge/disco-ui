@@ -1,21 +1,14 @@
 import { useState } from 'react';
 import { Search, ChevronDown, CheckCircle2, Lock, HelpCircle } from 'lucide-react';
-import { useBoxes, useCategories, useDocuments, useSearchDocuments } from '@/hooks/queries';
+import { useBoxes, useCategories, useDocumentSearch } from '@/hooks/queries';
 import { useStore } from '@/store/useStore';
 import { Document } from '@/lib/api';
 
 export function BundleTree() {
   const { data: boxes } = useBoxes();
   const { data: categories } = useCategories();
-  const { data: docsData } = useDocuments();
   const [searchQuery, setSearchQuery] = useState('');
-  const { data: searchResults } = useSearchDocuments(searchQuery);
-
-  const searchDocuments: Document[] = searchQuery
-    ? (searchResults?.map(r => r.document) ?? [])
-    : [];
-  const allDocuments: Document[] = docsData?.items ?? [];
-  const documents = searchQuery ? searchDocuments : allDocuments;
+  const documents = useDocumentSearch(searchQuery);
 
   const selectedDocId = useStore(state => state.selectedDocId);
   const setSelectedDocId = useStore(state => state.setSelectedDocId);

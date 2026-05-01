@@ -1,40 +1,40 @@
 import { Calendar, Mail, FileText, File, Clock } from 'lucide-react';
-import { useDocuments } from '@/hooks/queries';
+import { useTimeline } from '@/hooks/queries';
 import { useStore } from '@/store/useStore';
-import { Document } from '@/lib/api';
+import { TimelineEntry } from '@/lib/api';
 import { differenceInDays } from 'date-fns';
 
 export function Timeline() {
-  const { data: docsData } = useDocuments();
+  const { data: entries } = useTimeline({ limit: 500 });
   const setActiveTab = useStore(state => state.setActiveTab);
   const setSelectedDocId = useStore(state => state.setSelectedDocId);
 
-  const docs = [...(docsData?.items || [])]
+  const docs = [...(entries || [])]
     .filter(d => d.document_date)
-    .sort((a, b) => new Date(b.document_date!).getTime() - new Date(a.document_date!).getTime());
+    .sort((a, b) => new Date(b.document_date).getTime() - new Date(a.document_date).getTime());
   
   const grouped = docs.reduce((acc, doc) => {
-    const date = new Date(doc.document_date!);
+    const date = new Date(doc.document_date);
     const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' });
     if (!acc[monthYear]) acc[monthYear] = [];
     acc[monthYear].push(doc);
     return acc;
-  }, {} as Record<string, Document[]>);
+  }, {} as Record<string, TimelineEntry[]>);
 
   const handleDocClick = (id: string) => {
     setSelectedDocId(id);
     setActiveTab('review');
   };
 
-  const getDocIcon = (type: string | null) => {
-    if (type === 'email') return <Mail className="w-4 h-4" />;
-    if (type === 'contract') return <FileText className="w-4 h-4" />;
+  const getDocIcon = (source: string) => {
+    if (source === 'email') return <Mail className="w-4 h-4" />;
+    if (source === 'contract') return <FileText className="w-4 h-4" />;
     return <File className="w-4 h-4" />;
   };
 
-  const renderGap = (currentDoc: Document, nextDoc: Document | undefined) => {
+  const renderGap = (currentDoc: TimelineEntry, nextDoc: TimelineEntry | undefined) => {
     if (!nextDoc) return null;
-    const days = differenceInDays(new Date(currentDoc.document_date!), new Date(nextDoc.document_date!));
+    const days = differenceInDays(new Date(currentDoc.document_date), new Date(nextDoc.document_date));
     if (days > 14) { // Show gap if more than 2 weeks
       return (
         <div className="relative flex items-center justify-center my-4 group w-full">
@@ -74,23 +74,23 @@ export function Timeline() {
                 return (
                   <div key={doc.id} className="flex flex-col">
                     <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active cursor-pointer w-full" onClick={() => handleDocClick(doc.id)}>
-                      <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-background shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 transition-transform group-hover:scale-110 ${doc.classification?.is_relevant ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                        {getDocIcon(doc.doc_type)}
+                      <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-background shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 transition-transform group-hover:scale-110 ${doc.category_name ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                        {getDocIcon(doc.source)}
                       </div>
                       <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-card p-4 rounded-lg border border-border shadow-sm hover:border-primary/50 transition-colors group-hover:shadow-md">
                         <div className="flex items-center justify-between mb-1">
                           <time className="text-sm font-bold text-primary">
-                            {new Date(doc.document_date!).toLocaleDateString('default', { day: '2-digit', month: 'short' })}
+                            {new Date(doc.document_date).toLocaleDateString('default', { day: '2-digit', month: 'short' })}
                           </time>
-                          <span className="text-xs font-mono text-muted-foreground">{doc.classification?.page_code || 'Uncoded'}</span>
+                          <span className="text-xs font-mono text-muted-foreground">{doc.page_code || 'Uncoded'}</span>
                         </div>
                         <div className="text-sm font-medium mb-1 truncate">{doc.title}</div>
                         <div className="flex items-center space-x-2 text-xs">
-                          {doc.classification?.is_relevant && <span className="text-success font-medium">Relevant</span>}
-                          {doc.classification?.is_privileged && <span className="text-warning font-medium">Privileged</span>}
-                          {!doc.classification?.is_relevant && !doc.classification?.is_privileged && <span className="text-muted-foreground font-medium">Not Relevant</span>}
+                          {doc.category_name
+                            ? <span className="text-success font-medium truncate">{doc.category_name}</span>
+                            : <span className="text-muted-foreground font-medium">Uncategorised</span>}
                           <span className="text-muted-foreground">•</span>
-                          <span className="text-muted-foreground truncate capitalize">{doc.doc_type}</span>
+                          <span className="text-muted-foreground truncate capitalize">{doc.source}</span>
                         </div>
                       </div>
                     </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Cases } from './screens/Cases';
 import { Dashboard } from './screens/Dashboard';
@@ -14,9 +14,8 @@ const queryClient = new QueryClient();
 export default function App() {
   const activeTab = useStore(state => state.activeTab);
   const setActiveTab = useStore(state => state.setActiveTab);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const isDarkMode = useStore(state => state.isDarkMode);
 
-  // Apply dark mode class to html element
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -28,12 +27,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground transition-colors duration-200">
-        <TopNav 
-          activeTab={activeTab} 
-          onTabChange={setActiveTab} 
-          isDarkMode={isDarkMode}
-          toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
-        />
+        <TopNav activeTab={activeTab} onTabChange={setActiveTab} />
         <main className="flex-1 overflow-hidden">
           {activeTab === 'cases' && <Cases />}
           {activeTab === 'dashboard' && <Dashboard />}

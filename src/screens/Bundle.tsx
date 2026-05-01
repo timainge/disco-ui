@@ -228,9 +228,13 @@ export function Bundle() {
               Validate
             </button>
             <button
-              onClick={() => { handleValidate().then(() => {}); }}
-              disabled={validating || startExport.isPending}
-              className={`flex items-center px-5 py-2.5 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors ${(!validation?.valid) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              onClick={() => {
+                if (!validation) { handleValidate(); return; }
+                if (validation.warnings.length > 0) { setShowConfirmExport(true); return; }
+                handleExport();
+              }}
+              disabled={validating || startExport.isPending || (!!validation && !validation.valid)}
+              className="flex items-center px-5 py-2.5 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title={!validation ? 'Validate first' : !validation.valid ? 'Fix errors before exporting' : ''}
             >
               <Download className="w-4 h-4 mr-2" />
