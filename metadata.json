@@ -1,5 +1,6 @@
 {
-  "name": "",
+  "name": "discovery ui",
   "description": "",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": []
 }

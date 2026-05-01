@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useDocumentSearch } from '@/hooks/queries';
+import { useDocuments, useSearchDocuments } from '@/hooks/queries';
 import { useStore } from '@/store/useStore';
 import {
   createColumnHelper,
@@ -14,8 +14,10 @@ import { CheckCircle2, Lock, HelpCircle, ArrowUpDown, Search } from 'lucide-reac
 const columnHelper = createColumnHelper<any>();
 
 export function DocumentList() {
+  const { data: docsData } = useDocuments();
   const [searchQuery, setSearchQuery] = useState('');
-  const documents = useDocumentSearch(searchQuery);
+  const { data: searchResults } = useSearchDocuments(searchQuery);
+  const documents = searchQuery ? (searchResults?.items || []) : (docsData?.items || []);
   const selectedDocId = useStore(state => state.selectedDocId);
   const setSelectedDocId = useStore(state => state.setSelectedDocId);
   const [sorting, setSorting] = useState<SortingState>([]);

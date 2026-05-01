@@ -1,5 +1,5 @@
 import { useStore } from '@/store/useStore';
-import { useStats, useCategories } from '@/hooks/queries';
+import { useStats, useCategories, useDocuments } from '@/hooks/queries';
 import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { AlertTriangle, ChevronRight } from 'lucide-react';
@@ -8,18 +8,19 @@ export function Dashboard() {
   const setActiveTab = useStore(state => state.setActiveTab);
   const { data: stats, isLoading: statsLoading } = useStats();
   const { data: categories } = useCategories();
+  const { data: docsData } = useDocuments();
 
   if (statsLoading || !stats) return <div className="p-8 flex justify-center text-muted-foreground">Loading dashboard...</div>;
 
-  const lastClassified = stats.last_classified_at
-    ? new Date(stats.last_classified_at).toLocaleString()
-    : 'Never';
+  const documents = docsData?.items || [];
+  const stagingDocs = documents.filter(d => !d.classification?.category_id);
+  const staleDocs = documents.filter(d => d.classification?.is_stale);
 
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-6 overflow-y-auto h-full">
       <div className="flex justify-between items-end mb-2">
         <h2 className="text-2xl font-bold tracking-tight">Overview</h2>
-        <span className="text-sm text-muted-foreground">Last classified: {lastClassified}</span>
+        <span className="text-sm text-muted-foreground">Last classified: 2 hours ago</span>
       </div>
 
       <div className="grid grid-cols-4 gap-4">
@@ -46,20 +47,20 @@ export function Dashboard() {
           <div>
             <div className="flex justify-between items-center mb-2">
               <h2 className="text-lg font-semibold">Review progress</h2>
-              <span className="text-sm font-medium">{Math.round(stats.review_progress_pct ?? (stats.reviewed / stats.total_documents) * 100)}%</span>
+              <span className="text-sm font-medium">{Math.round((stats.reviewed / stats.total_documents) * 100)}%</span>
             </div>
-            <ProgressBar progress={stats.review_progress_pct ?? (stats.reviewed / stats.total_documents) * 100} className="h-3" />
+            <ProgressBar progress={(stats.reviewed / stats.total_documents) * 100} className="h-3" />
           </div>
 
           <div>
             <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">By category</h3>
             <div className="space-y-2">
               {categories?.map(cat => {
-                const catStat = stats.by_category?.find(s => s.category_id === cat.id);
-                const total = catStat?.total ?? 0;
-                const reviewed = catStat?.reviewed ?? 0;
+                const catDocs = documents.filter(d => d.classification?.category_id === cat.id);
+                const total = catDocs.length;
+                const reviewed = catDocs.filter(d => d.is_reviewed).length;
                 const progress = total > 0 ? Math.round((reviewed / total) * 100) : 0;
-
+                
                 return (
                   <div key={cat.id} className="flex items-center justify-between text-sm cursor-pointer hover:bg-accent p-2 rounded-md transition-colors group" onClick={() => setActiveTab('review')}>
                     <span className="w-48 font-medium group-hover:text-primary">{cat.number.toString().padStart(2, '0')} {cat.name}</span>
@@ -69,11 +70,11 @@ export function Dashboard() {
                   </div>
                 );
               })}
-
+              
               <div className="flex items-center justify-between text-sm cursor-pointer hover:bg-accent p-2 rounded-md transition-colors group mt-4 border-t border-border pt-2" onClick={() => setActiveTab('review')}>
                 <span className="w-48 font-medium text-muted-foreground group-hover:text-primary">Staging</span>
                 <div className="flex-1 mx-4 border-t border-dashed border-border"></div>
-                <span className="w-24 text-right text-muted-foreground">{stats.total_documents - (stats.classified ?? 0)} docs</span>
+                <span className="w-24 text-right text-muted-foreground">{stagingDocs.length} docs</span>
                 <ChevronRight className="w-4 h-4 ml-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
@@ -96,14 +97,14 @@ export function Dashboard() {
             <div className="flex items-start text-foreground cursor-pointer hover:underline p-2 -mx-2 rounded hover:bg-accent transition-colors" onClick={() => setActiveTab('review')}>
               <div className="mt-0.5 mr-2">•</div>
               <div>
-                <div className="font-medium">{stats.total_documents - (stats.classified ?? 0)} documents in staging</div>
+                <div className="font-medium">{stagingDocs.length} documents in staging</div>
                 <div className="text-muted-foreground text-xs mt-0.5">Unclassified by AI</div>
               </div>
             </div>
             <div className="flex items-start text-muted-foreground cursor-pointer hover:underline p-2 -mx-2 rounded hover:bg-accent transition-colors">
               <div className="mt-0.5 mr-2">•</div>
               <div>
-                <div className="font-medium">{stats.stale} stale classifications</div>
+                <div className="font-medium">{staleDocs.length} stale classifications</div>
                 <div className="text-xs mt-0.5">Criteria changed since last run</div>
               </div>
             </div>

@@ -113,7 +113,7 @@ export function DocumentPreview() {
                   <h2 className="text-xl font-bold mb-4">{docDetail.title}</h2>
                   <div className="grid grid-cols-[60px_1fr] gap-x-4 gap-y-1 text-sm">
                     <div className="text-muted-foreground font-medium">From:</div><div>{docDetail.author}</div>
-                    <div className="text-muted-foreground font-medium">To:</div><div>{docDetail.addressee ?? docDetail.metadata?.to}</div>
+                    <div className="text-muted-foreground font-medium">To:</div><div>{docDetail.metadata?.to}</div>
                     <div className="text-muted-foreground font-medium">Date:</div><div>{docDetail.document_date}</div>
                   </div>
                 </div>

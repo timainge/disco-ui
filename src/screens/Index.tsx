@@ -1,160 +1,164 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Download, Filter, ArrowUpDown, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
-import { useDocuments, useSearchDocuments, useCategories, useSearchFacets } from '@/hooks/queries';
-import { Document, DocumentFilters } from '@/lib/api';
-import { useDebounce } from '@/hooks/useDebounce';
-import { AdvancedFilters, AdvancedFilterState, AdvancedFilterSetters } from '@/components/index/AdvancedFilters';
+import { useDocuments, useCategories } from '@/hooks/queries';
+import { Document } from '@/lib/api';
+import { AdvancedFilters } from '@/components/index/AdvancedFilters';
 import {
   createColumnHelper,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
   SortingState,
+  ColumnFiltersState,
   useReactTable,
 } from '@tanstack/react-table';
 
 const columnHelper = createColumnHelper<Document>();
 
-
-const PAGE_SIZE_OPTIONS = [10, 15, 20, 30, 40, 50];
-const DEFAULT_PAGE_SIZE = 15;
-
 export function Index() {
+  const { data: docsData } = useDocuments();
   const { data: categories } = useCategories();
-  const { data: facets } = useSearchFacets();
+  const documents = docsData?.items || [];
 
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [pageIndex, setPageIndex] = useState(0);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-
-  // Column filters for advanced filter panel (doc_type, category_id, date range)
-  const [filterDocType, setFilterDocType] = useState('');
-  const [filterCategoryId, setFilterCategoryId] = useState('');
-  const [filterFromDate, setFilterFromDate] = useState('');
-  const [filterToDate, setFilterToDate] = useState('');
-  const [filterReview, setFilterReview] = useState('');
-
-  const debouncedQuery = useDebounce(globalFilter.trim(), 300);
-
-  const docFilters: DocumentFilters = {
-    limit: pageSize,
-    offset: pageIndex * pageSize,
-    ...(filterDocType && { content_type: filterDocType }),
-    ...(filterCategoryId && { category_id: filterCategoryId }),
-    ...(filterFromDate && { from_date: filterFromDate }),
-    ...(filterToDate && { to_date: filterToDate }),
-    ...(filterReview === 'relevant' && { is_relevant: true }),
-    ...(filterReview === 'privileged' && { is_privileged: true }),
-    ...(filterReview === 'unreviewed' && { has_review: false }),
-  };
-
-  const { data: docsData } = useDocuments(docFilters, { enabled: !debouncedQuery });
-  const { data: searchResults } = useSearchDocuments(debouncedQuery);
-
-  const documents: Document[] = debouncedQuery
-    ? (searchResults?.map(r => r.document) ?? [])
-    : (docsData?.items ?? []);
-
-  const total = debouncedQuery ? documents.length : (docsData?.total ?? 0);
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   const docTypes = useMemo(() => {
-    if (facets?.content_type) return Object.keys(facets.content_type).sort();
-    return [];
-  }, [facets]);
+    const types = new Set(documents.map(d => d.doc_type).filter(Boolean));
+    return Array.from(types).sort();
+  }, [documents]);
 
   const columns = useMemo(() => [
     columnHelper.accessor('classification.page_code', {
       header: ({ column }) => (
-        <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
-          <span>Page Code</span><ArrowUpDown className="w-3 h-3" />
-        </button>
+        <div className="flex flex-col">
+          <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+            <span>Page Code</span><ArrowUpDown className="w-3 h-3" />
+          </button>
+        </div>
       ),
       cell: info => <span className="font-mono text-xs">{info.getValue() || 'Uncoded'}</span>,
     }),
     columnHelper.accessor('document_date', {
       header: ({ column }) => (
-        <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
-          <span>Doc Date</span><ArrowUpDown className="w-3 h-3" />
-        </button>
+        <div className="flex flex-col">
+          <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+            <span>Doc Date</span><ArrowUpDown className="w-3 h-3" />
+          </button>
+        </div>
       ),
       cell: info => info.getValue() || '-',
+      filterFn: (row, id, value) => {
+        const rowDate = row.getValue(id) as string;
+        if (!rowDate) return false;
+        const { start, end } = value as { start?: string, end?: string };
+        if (start && rowDate < start) return false;
+        if (end && rowDate > end) return false;
+        return true;
+      }
     }),
     columnHelper.accessor('doc_type', {
       header: ({ column }) => (
-        <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
-          <span>Doc Type</span><ArrowUpDown className="w-3 h-3" />
-        </button>
+        <div className="flex flex-col">
+          <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+            <span>Doc Type</span><ArrowUpDown className="w-3 h-3" />
+          </button>
+        </div>
       ),
       cell: info => <span className="capitalize">{info.getValue() || '-'}</span>,
+      filterFn: (row, id, value) => {
+        if (!value) return true;
+        return row.getValue(id) === value;
+      }
     }),
     columnHelper.accessor('author', {
       header: ({ column }) => (
-        <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
-          <span>Author</span><ArrowUpDown className="w-3 h-3" />
-        </button>
-      ),
-      cell: info => info.getValue() || '-',
-    }),
-    columnHelper.accessor('addressee', {
-      header: ({ column }) => (
-        <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
-          <span>Addressee</span><ArrowUpDown className="w-3 h-3" />
-        </button>
+        <div className="flex flex-col">
+          <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+            <span>Author</span><ArrowUpDown className="w-3 h-3" />
+          </button>
+        </div>
       ),
       cell: info => info.getValue() || '-',
     }),
     columnHelper.accessor('title', {
       header: ({ column }) => (
-        <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
-          <span>Title/Subject</span><ArrowUpDown className="w-3 h-3" />
-        </button>
+        <div className="flex flex-col">
+          <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+            <span>Title/Subject</span><ArrowUpDown className="w-3 h-3" />
+          </button>
+        </div>
       ),
       cell: info => <span className="font-medium">{info.getValue()}</span>,
     }),
     columnHelper.accessor('classification.category_id', {
       header: ({ column }) => (
-        <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
-          <span>Category</span><ArrowUpDown className="w-3 h-3" />
-        </button>
+        <div className="flex flex-col">
+          <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+            <span>Category</span><ArrowUpDown className="w-3 h-3" />
+          </button>
+        </div>
       ),
       cell: info => {
-        const cat = categories?.find(c => c.id === info.getValue());
+        const catId = info.getValue();
+        const cat = categories?.find(c => c.id === catId);
         return cat ? cat.name : '-';
       },
+      filterFn: (row, id, value) => {
+        if (!value) return true;
+        return row.getValue(id) === value;
+      }
     }),
     columnHelper.accessor('classification', {
-      header: () => <span>Review</span>,
+      header: ({ column }) => (
+        <div className="flex flex-col">
+          <button className="flex items-center space-x-1 hover:text-foreground" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+            <span>Review</span><ArrowUpDown className="w-3 h-3" />
+          </button>
+        </div>
+      ),
       cell: info => {
         const c = info.getValue();
         if (c?.is_relevant) return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success/10 text-success">Relevant</span>;
         if (c?.is_privileged) return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-warning/10 text-warning">Privileged</span>;
         return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">Unreviewed</span>;
       },
+      filterFn: (row, id, value) => {
+        if (!value) return true;
+        const c = row.getValue(id) as any;
+        let status = 'unreviewed';
+        if (c?.is_relevant) status = 'relevant';
+        if (c?.is_privileged) status = 'privileged';
+        return status === value;
+      }
     }),
   ], [categories]);
 
   const table = useReactTable({
     data: documents,
     columns,
-    state: { sorting },
-    manualPagination: true,
-    pageCount,
+    state: {
+      sorting,
+      columnFilters,
+      globalFilter,
+    },
+    initialState: {
+      pagination: {
+        pageSize: 15,
+      },
+    },
     onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
   });
-
-  const canPrev = pageIndex > 0;
-  const canNext = pageIndex < pageCount - 1;
-
-  // Reset to page 0 when filters/search change
-  useEffect(() => { setPageIndex(0); }, [debouncedQuery, filterDocType, filterCategoryId, filterFromDate, filterToDate, filterReview]);
-
-  const filterState: AdvancedFilterState = { filterDocType, filterCategoryId, filterFromDate, filterToDate, filterReview };
-  const setFilterState: AdvancedFilterSetters = { setFilterDocType, setFilterCategoryId, setFilterFromDate, setFilterToDate, setFilterReview };
 
   return (
     <div className="p-8 h-full flex flex-col max-w-7xl mx-auto">
@@ -166,15 +170,15 @@ export function Index() {
         <div className="flex space-x-3">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Global search..."
-              value={globalFilter}
+            <input 
+              type="text" 
+              placeholder="Global search..." 
+              value={globalFilter ?? ''}
               onChange={e => setGlobalFilter(e.target.value)}
-              className="pl-9 pr-3 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary shadow-sm w-64"
+              className="pl-9 pr-3 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary shadow-sm w-64" 
             />
           </div>
-          <button
+          <button 
             onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors border ${showFilters ? 'bg-primary/10 text-primary border-primary/20' : 'bg-background text-foreground border-border hover:bg-accent'}`}
           >
@@ -187,14 +191,9 @@ export function Index() {
           </button>
         </div>
       </div>
-
+      
       {showFilters && (
-        <AdvancedFilters
-          categories={categories || []}
-          docTypes={docTypes}
-          filterState={filterState}
-          setFilterState={setFilterState}
-        />
+        <AdvancedFilters table={table} categories={categories || []} docTypes={docTypes} />
       )}
 
       <div className="flex-1 border border-border rounded-lg overflow-hidden bg-card flex flex-col shadow-sm">
@@ -205,7 +204,12 @@ export function Index() {
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map(header => (
                     <th key={header.id} className="px-4 py-3 font-medium align-top">
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
                     </th>
                   ))}
                 </tr>
@@ -221,40 +225,61 @@ export function Index() {
                   ))}
                 </tr>
               ))}
-              {documents.length === 0 && (
-                <tr>
-                  <td colSpan={columns.length} className="px-4 py-12 text-center text-muted-foreground">
-                    No documents found.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
         <div className="p-4 border-t border-border text-xs text-muted-foreground flex justify-between items-center bg-muted/20">
           <div className="flex items-center space-x-2">
             <span className="font-medium">
-              Page {pageIndex + 1} of {pageCount}
+              Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
             </span>
             <span className="text-muted-foreground">
-              ({total} total rows)
+              ({table.getFilteredRowModel().rows.length} total rows)
             </span>
           </div>
           <div className="flex items-center space-x-2">
             <select
-              value={pageSize}
-              onChange={e => { setPageSize(Number(e.target.value)); setPageIndex(0); }}
+              value={table.getState().pagination.pageSize}
+              onChange={e => {
+                table.setPageSize(Number(e.target.value))
+              }}
               className="bg-background border border-border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-primary"
             >
-              {PAGE_SIZE_OPTIONS.map(s => (
-                <option key={s} value={s}>Show {s}</option>
+              {[10, 15, 20, 30, 40, 50].map(pageSize => (
+                <option key={pageSize} value={pageSize}>
+                  Show {pageSize}
+                </option>
               ))}
             </select>
             <div className="flex items-center space-x-1">
-              <button className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed" onClick={() => setPageIndex(0)} disabled={!canPrev}><ChevronsLeft className="w-4 h-4" /></button>
-              <button className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed" onClick={() => setPageIndex(i => i - 1)} disabled={!canPrev}><ChevronLeft className="w-4 h-4" /></button>
-              <button className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed" onClick={() => setPageIndex(i => i + 1)} disabled={!canNext}><ChevronRight className="w-4 h-4" /></button>
-              <button className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed" onClick={() => setPageIndex(pageCount - 1)} disabled={!canNext}><ChevronsRight className="w-4 h-4" /></button>
+              <button
+                className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => table.setPageIndex(0)}
+                disabled={!table.getCanPreviousPage()}
+              >
+                <ChevronsLeft className="w-4 h-4" />
+              </button>
+              <button
+                className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+                disabled={!table.getCanNextPage()}
+              >
+                <ChevronsRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
@@ -262,4 +287,3 @@ export function Index() {
     </div>
   );
 }
-
