@@ -17,7 +17,9 @@ export function DocumentList() {
   const { data: docsData } = useDocuments();
   const [searchQuery, setSearchQuery] = useState('');
   const { data: searchResults } = useSearchDocuments(searchQuery);
-  const documents = searchQuery ? (searchResults?.items || []) : (docsData?.items || []);
+  const documents = searchQuery
+    ? (searchResults?.map(r => r.document) ?? [])
+    : (docsData?.items ?? []);
   const selectedDocId = useStore(state => state.selectedDocId);
   const setSelectedDocId = useStore(state => state.setSelectedDocId);
   const [sorting, setSorting] = useState<SortingState>([]);
